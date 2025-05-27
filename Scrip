@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# Colores para mejor visualización
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # Sin color
+
+# Función para instalar Brave
+install_brave() {
+    echo -e "${YELLOW}Instalando Brave Browser...${NC}"
+    sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+    sudo apt update -qq
+    sudo apt install -y brave-browser
+    echo -e "${GREEN}✅ Brave instalado correctamente.${NC}"
+}
+
+# Función para instalar VS Code
+install_vscode() {
+    echo -e "${YELLOW}Instalando Visual Studio Code...${NC}"
+    sudo apt-get install -y wget gpg > /dev/null
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
+    sudo install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/
+    sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
+    sudo apt update -qq
+    sudo apt install -y code
+    echo -e "${GREEN}✅ VS Code instalado correctamente.${NC}"
+}
+
+# Función para instalar IntelliJ IDEA Community
+install_intellij() {
+    echo -e "${YELLOW}Instalando IntelliJ IDEA Community...${NC}"
+    if ! command -v snap &> /dev/null; then
+        sudo apt install -y snapd
+    fi
+    sudo snap install intellij-idea-community --classic
+    echo -e "${GREEN}✅ IntelliJ IDEA Community instalado correctamente.${NC}"
+}
+
+# Función para instalar Postman
+install_postman() {
+    echo -e "${YELLOW}Instalando Postman...${NC}"
+    if ! command -v snap &> /dev/null; then
+        sudo apt install -y snapd
+    fi
+    sudo snap install postman
+    echo -e "${GREEN}✅ Postman instalado correctamente.${NC}"
+}
+
+# Mostrar menú interactivo
+show_menu() {
+    clear
+    echo -e "${YELLOW}🛠️  Selecciona los programas que deseas instalar (múltiples opciones):${NC}"
+    echo "1) [ ] Brave Browser"
+    echo "2) [ ] Visual Studio Code"
+    echo "3) [ ] IntelliJ IDEA Community"
+    echo "4) [ ] Postman"
+    echo "5) [✅] Instalar TODOS"
+    echo "6) [🚪] Salir"
+    echo -e "${YELLOW}Ingresa los números separados por comas (ej: 1,2,4):${NC}"
+}
+
+# Inicializar selecciones
+selected=()
+
+while true; do
+    show_menu
+    read -p ">> " choices
+
+    # Salir si elige la opción 6
+    if [[ "$choices" == "6" ]]; then
+        echo -e "${RED}Saliendo...${NC}"
+        exit 0
+    fi
+
+    # Reiniciar selección
+    selected=()
+
+    IFS=',' read -ra opts <<< "$choices"
+    for opt in "${opts[@]}"; do
+        case $opt in
+            1) selected+=("Brave") ;;
+            2) selected+=("VS Code") ;;
+            3) selected+=("IntelliJ") ;;
+            4) selected+=("Postman") ;;
+            5) 
+                selected=("Brave" "VS Code" "IntelliJ" "Postman")
+                break 2 # Salir del bucle y proceder a instalar todo
+                ;;
+            *) echo -e "${RED}❌ Opción inválida: $opt${NC}" ;;
+        esac
+    done
+
+    # Mostrar resumen de selección
+    if [ ${#selected[@]} -gt 0 ]; then
+        echo -e "\n${GREEN}✔ Seleccionaste:${NC}"
+        for app in "${selected[@]}"; do
+            echo "- $app"
+        done
+
+        read -p "¿Confirmar instalación? (s/n): " confirm
+        if [[ "$confirm" == [sS]* ]]; then
+            break
+        else
+            selected=() # Reiniciar si no confirma
+        fi
+    else
+        echo -e "${RED}⚠ No seleccionaste ningún programa.${NC}"
+        sleep 2
+    fi
+done
+
+# Actualizar repositorios antes de instalar
+echo -e "${YELLOW}🔄 Actualizando repositorios...${NC}"
+sudo apt update -qq
+
+# Instalar programas seleccionados
+for app in "${selected[@]}"; do
+    case $app in
+        "Brave") install_brave ;;
+        "VS Code") install_vscode ;;
+        "IntelliJ") install_intellij ;;
+        "Postman") install_postman ;;
+    esac
+done
+
+echo -e "${GREEN}🎉 ¡Instalación completada!${NC}"
